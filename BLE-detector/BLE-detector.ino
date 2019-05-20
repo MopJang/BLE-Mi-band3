@@ -1,7 +1,3 @@
-/*
-   Based on Neil Kolban example for IDF: https://github.com/nkolban/esp32-snippets/blob/master/cpp_utils/tests/BLE%20Tests/SampleScan.cpp
-   Ported to Arduino ESP32 by Evandro Copercini
-*/
 #include <Arduino.h>
 #include <sstream>
 
@@ -10,10 +6,14 @@
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
 
-#define LED_ONBOARD   22
+
+const char* ssid = "WIFI_NAME";
+const char* password = "WIFI_PASSWORD";
+#define LED_ONBOARD   25
+boolean check;
+int count_stable =0; 
 
 /*  Duration of BLE scan
-
     ==============                  ==============                   ==============
     =   WINDOW   =  ===INTERVAL===  =   WINDOW   =  ===INTERVAL===   =   WINDOW   =
     ==============                  ==============                   ==============
@@ -21,7 +21,7 @@
     =                                  SCAN TIME                                  =
     ===============================================================================
 */
-#define SCAN_TIME       1  // seconds
+#define SCAN_TIME       3  // seconds
 #define INTERVAL_TIME   200   // (mSecs)
 #define WINDOW_TIME     100   // less or equal setInterval value
 
@@ -43,6 +43,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println("BLEDevice init...");
 
+
   pinMode(LED_ONBOARD, OUTPUT);
   digitalWrite(LED_ONBOARD, LOW);
 
@@ -60,9 +61,12 @@ void loop() {
   int count = foundDevices.getCount();
   for (int i = 0; i < count; i++)
   {
+    Serial.println(count);
     BLEAdvertisedDevice d = foundDevices.getDevice(i);
 
     if (d.getName() == "Mi Band 3") {
+      check = true;
+      count_stable =0;
       char deviceBuffer[100];
       deviceName = d.getName().c_str();
       deviceAddress = d.getAddress().toString().c_str();
@@ -71,15 +75,30 @@ void loop() {
       sprintf(deviceBuffer, "Name: %s| Address: %s| RSSI: %d\n", deviceName.c_str(), deviceAddress.c_str(), deviceRSSI);
       Serial.print(deviceBuffer);
 
-      if (deviceAddress == "e6:37:63:e7:2f:4b" && deviceRSSI > -80)
+      if (deviceAddress == "e0:d9:80:e9:9d:33" && deviceRSSI > -80)
       {
         digitalWrite(LED_ONBOARD, HIGH); // Turn on LED
+        Serial.println("ON");
       }
       else
       {
         digitalWrite(LED_ONBOARD, LOW); // Turn off LED
+        Serial.println("OFF");
+      }
+      //---------------------------------------------------------Check if not found Mi Band-------------------------------------
+    }else if(i == count-1 && check == false){
+      count_stable +=1;
+      if(count_stable ==20){ // set limit to reset counter
+        count_stable =0;
+      }
+      Serial.println(count_stable);
+      if(count_stable == 4){ //set quantity of scan cycle for accept missing Mi Band
+      digitalWrite(LED_ONBOARD, LOW); 
+        Serial.println("Not Found");
       }
     }
+      check = false;
+      //---------------------------------------------------------------------------------------------------------------------------
   }
   pBLEScan->clearResults();
 }
